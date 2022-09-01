@@ -6,8 +6,13 @@ use std::{error::Error, fmt, fs};
 
 #[derive(Debug)]
 enum RenameError {
-    InvalidInput(String),
-    Other,
+    OsStrToStrFailed(String),
+    PathToOsStrFailed(String),
+    PathToStrFailed(String),
+    RenameFailed(String),
+    InvalidEntry(String),
+    GetMetadataFailed(String),
+    ReadDirFailed(String),
 }
 
 impl fmt::Display for RenameError {
@@ -26,39 +31,41 @@ fn iterate_dir(
 ) -> Result<(), RenameError> {
     let paths = fs::read_dir(path)
         .report()
-        .change_context(RenameError::Other)
-        .attach_printable(format!("Cannot read directory for {path}"))?;
+        .change_context(RenameError::ReadDirFailed(format!(
+            "Cannot read directory for {path}"
+        )))?;
 
     for entry in paths {
         let entry = entry
             .report()
-            .change_context(RenameError::Other)
-            .attach_printable(format!("Cannot get entry for {path}"))?;
+            .change_context(RenameError::InvalidEntry(format!(
+                "Cannot get entry for {path}"
+            )))?;
         let path = entry.path();
         let data = entry
             .metadata()
             .report()
-            .change_context(RenameError::Other)
-            .attach_printable(format!("Cannot get metadata for {}", path.display()))?;
+            .change_context(RenameError::GetMetadataFailed(format!(
+                "Cannot get metadata for {}",
+                path.display()
+            )))?;
         if data.is_file() {
             if let Some(ex) = path.extension() {
                 let ex_str = ex.to_str().ok_or_else(|| {
-                    let msg = format!("Cannot get extension for file {}.", path.display());
-                    Report::new(RenameError::InvalidInput(msg.clone()))
+                    let msg = format!("Cannot get extension for file {}", path.display());
+                    Report::new(RenameError::OsStrToStrFailed(msg.clone()))
                         .attach_printable(msg.clone())
                 })?;
                 if ex_str == extension {
                     let file_name_os = path.file_name().ok_or_else(|| {
-                        Report::new(RenameError::Other).attach_printable(format!(
-                            "Cannot get file name for {}.",
-                            path.display()
-                        ))
+                        let msg = format!("Cannot get file name for {}.", path.display());
+                        Report::new(RenameError::PathToOsStrFailed(msg.clone()))
+                            .attach_printable(msg.clone())
                     })?;
                     let file_name = file_name_os.to_str().ok_or_else(|| {
-                        Report::new(RenameError::Other).attach_printable(format!(
-                            "Cannot get file name for {}.",
-                            path.display()
-                        ))
+                        let msg = format!("Cannot get file name for {}.", path.display());
+                        Report::new(RenameError::OsStrToStrFailed(msg.clone()))
+                            .attach_printable(msg.clone())
                     })?;
                     if file_name.contains(char::is_whitespace) {
                         let mut new_file_path = path.clone();
@@ -77,14 +84,13 @@ fn iterate_dir(
                             new_file_path.display()
                         );
                         if !*dry_run {
-                            fs::rename(&path, &new_file_path)
-                                .report()
-                                .change_context(RenameError::Other)
-                                .attach_printable(format!(
+                            fs::rename(&path, &new_file_path).report().change_context(
+                                RenameError::RenameFailed(format!(
                                     "Cannot rename file from {} to {}",
                                     path.display(),
                                     new_file_path.display()
-                                ))?;
+                                )),
+                            )?;
                         }
                     } else if *verbose {
                         println!(
@@ -103,8 +109,8 @@ fn iterate_dir(
                 println!("Directory: {}", path.display());
             }
             let path_str = path.to_str().ok_or_else(|| {
-                Report::new(RenameError::Other)
-                    .attach_printable(format!("Cannot get string from {}.", path.display()))
+                let msg = format!("Cannot get string from {}.", path.display());
+                Report::new(RenameError::PathToStrFailed(msg.clone())).attach_printable(msg.clone())
             })?;
             iterate_dir(path_str, extension, dry_run, verbose)?;
         }
@@ -154,8 +160,13 @@ fn main() {
         }
         Err(err) => {
             match err.current_context() {
-                RenameError::InvalidInput(msg) => println!("\n{msg}"),
-                RenameError::Other => println!("\nSomething went wrong! Try again!"),
+                RenameError::OsStrToStrFailed(msg) => println!("\n{msg}"),
+                RenameError::PathToOsStrFailed(msg) => println!("\n{msg}"),
+                RenameError::PathToStrFailed(msg) => println!("\n{msg}"),
+                RenameError::RenameFailed(msg) => println!("\n{msg}"),
+                RenameError::InvalidEntry(msg) => println!("\n{msg}"),
+                RenameError::GetMetadataFailed(msg) => println!("\n{msg}"),
+                RenameError::ReadDirFailed(msg) => println!("\n{msg}"),
             }
 
             log::error!("\n{err:?}");
