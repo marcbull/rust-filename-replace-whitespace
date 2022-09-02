@@ -153,7 +153,7 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
-    let result = iterate_dir(&path, &extension, &dry_run, &true);
+    let result = iterate_dir(&path, &extension, &dry_run, &verbose);
     match result {
         Ok(()) => {
             println!("\nDone");
