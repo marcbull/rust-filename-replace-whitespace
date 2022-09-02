@@ -13,6 +13,7 @@ enum RenameError {
     InvalidEntry(String),
     GetMetadataFailed(String),
     ReadDirFailed(String),
+    UnknownMetadatyType(String),
 }
 
 impl fmt::Display for RenameError {
@@ -104,7 +105,7 @@ fn iterate_dir(
                     println!("File: {} length {}", path.display(), data.len());
                 }
             }
-        } else {
+        } else if data.is_dir() {
             if *verbose {
                 println!("Directory: {}", path.display());
             }
@@ -113,6 +114,14 @@ fn iterate_dir(
                 Report::new(RenameError::PathToStrFailed(msg.clone())).attach_printable(msg.clone())
             })?;
             iterate_dir(path_str, extension, dry_run, verbose)?;
+        } else if data.is_symlink() {
+            if *verbose {
+                println!("Symlink: {} - not follwing", path.display());
+            }
+        } else {
+            let msg = format!("Unkown metadaty type for for {}.", path.display());
+            return Err(Report::new(RenameError::UnknownMetadatyType(msg.clone()))
+                .attach_printable(msg.clone()));
         }
     }
 
@@ -167,6 +176,7 @@ fn main() {
                 RenameError::InvalidEntry(msg) => println!("\n{msg}"),
                 RenameError::GetMetadataFailed(msg) => println!("\n{msg}"),
                 RenameError::ReadDirFailed(msg) => println!("\n{msg}"),
+                RenameError::UnknownMetadatyType(msg) => println!("\n{msg}"),
             }
 
             log::error!("\n{err:?}");
