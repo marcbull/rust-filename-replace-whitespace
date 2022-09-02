@@ -128,7 +128,7 @@ fn main() {
     {
         let mut ap = ArgumentParser::new();
         ap.set_description(
-            "Recursively repalce whitespaces in filesnames matching the extension by underscores.",
+            "Recursively repalce whitespaces in filesnames matching the extension by underscores. See: https://github.com/marcbull/rust-filename-replace-whitespace",
         );
 
         ap.refer(&mut verbose)
