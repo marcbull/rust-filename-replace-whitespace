@@ -18,7 +18,7 @@ enum RenameError {
 
 impl fmt::Display for RenameError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.write_str("Credit card error: Could not retrieve credit card.")
+        fmt.write_str("Could not rename files in directory")
     }
 }
 
