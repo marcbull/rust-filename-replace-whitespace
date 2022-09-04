@@ -52,18 +52,18 @@ fn iterate_dir(
             )))?;
         if data.is_file() {
             if let Some(ex) = path.extension() {
-                let ex_str = ex.to_str().ok_or_else(|| {
+                let ex = ex.to_str().ok_or_else(|| {
                     let msg = format!("Cannot get extension for file {}", path.display());
                     Report::new(RenameError::OsStrToStrFailed(msg.clone()))
                         .attach_printable(msg.clone())
                 })?;
-                if ex_str == extension {
-                    let file_name_os = path.file_name().ok_or_else(|| {
+                if ex == extension {
+                    let file_name = path.file_name().ok_or_else(|| {
                         let msg = format!("Cannot get file name for {}.", path.display());
                         Report::new(RenameError::PathToOsStrFailed(msg.clone()))
                             .attach_printable(msg.clone())
                     })?;
-                    let file_name = file_name_os.to_str().ok_or_else(|| {
+                    let file_name = file_name.to_str().ok_or_else(|| {
                         let msg = format!("Cannot get file name for {}.", path.display());
                         Report::new(RenameError::OsStrToStrFailed(msg.clone()))
                             .attach_printable(msg.clone())
@@ -109,11 +109,11 @@ fn iterate_dir(
             if *verbose {
                 println!("Directory: {}", path.display());
             }
-            let path_str = path.to_str().ok_or_else(|| {
+            let path = path.to_str().ok_or_else(|| {
                 let msg = format!("Cannot get string from {}.", path.display());
                 Report::new(RenameError::PathToStrFailed(msg.clone())).attach_printable(msg.clone())
             })?;
-            iterate_dir(path_str, extension, dry_run, verbose)?;
+            iterate_dir(path, extension, dry_run, verbose)?;
         } else if data.is_symlink() {
             if *verbose {
                 println!("Symlink: {} - not follwing", path.display());
