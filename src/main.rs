@@ -2,7 +2,7 @@ extern crate argparse;
 
 use argparse::{ArgumentParser, Store, StoreTrue};
 use error_stack::{IntoReport, Report, Result, ResultExt};
-use std::{error::Error, fmt, fs};
+use std::{error::Error, fmt, fs, fs::Metadata, path::PathBuf};
 
 #[derive(Debug)]
 enum RenameError {
@@ -23,6 +23,70 @@ impl fmt::Display for RenameError {
 }
 
 impl Error for RenameError {}
+
+fn handle_file(
+    path: &PathBuf,
+    data: &Metadata,
+    extension: &String,
+    dry_run: &bool,
+    verbose: &bool,
+) -> Result<(), RenameError> {
+    if let Some(ex) = path.extension() {
+        let ex = ex.to_str().ok_or_else(|| {
+            let msg = format!("Cannot get extension for file {}", path.display());
+            Report::new(RenameError::OsStrToStrFailed(msg.clone())).attach_printable(msg.clone())
+        })?;
+        if ex == extension {
+            let file_name = path.file_name().ok_or_else(|| {
+                let msg = format!("Cannot get file name for {}.", path.display());
+                Report::new(RenameError::PathToOsStrFailed(msg.clone()))
+                    .attach_printable(msg.clone())
+            })?;
+            let file_name = file_name.to_str().ok_or_else(|| {
+                let msg = format!("Cannot get file name for {}.", path.display());
+                Report::new(RenameError::OsStrToStrFailed(msg.clone()))
+                    .attach_printable(msg.clone())
+            })?;
+            if file_name.contains(char::is_whitespace) {
+                let mut new_file_path = path.clone();
+                new_file_path.pop();
+                let new_filename = file_name.replace(" ", "_");
+                new_file_path.push(new_filename);
+                let mut operation = "rename";
+                if *dry_run {
+                    operation = "would rename";
+                }
+                println!(
+                    "File: matches {} {} from '{}' to '{}'",
+                    extension,
+                    operation,
+                    path.display(),
+                    new_file_path.display()
+                );
+                if !*dry_run {
+                    fs::rename(&path, &new_file_path).report().change_context(
+                        RenameError::RenameFailed(format!(
+                            "Cannot rename file from {} to {}",
+                            path.display(),
+                            new_file_path.display()
+                        )),
+                    )?;
+                }
+            } else if *verbose {
+                println!(
+                    "{} file: {} length {}",
+                    extension,
+                    path.display(),
+                    data.len()
+                );
+            }
+        } else if *verbose {
+            println!("File: {} length {}", path.display(), data.len());
+        }
+    }
+
+    Ok(())
+}
 
 fn iterate_dir(
     path: &str,
@@ -51,60 +115,7 @@ fn iterate_dir(
                 path.display()
             )))?;
         if data.is_file() {
-            if let Some(ex) = path.extension() {
-                let ex = ex.to_str().ok_or_else(|| {
-                    let msg = format!("Cannot get extension for file {}", path.display());
-                    Report::new(RenameError::OsStrToStrFailed(msg.clone()))
-                        .attach_printable(msg.clone())
-                })?;
-                if ex == extension {
-                    let file_name = path.file_name().ok_or_else(|| {
-                        let msg = format!("Cannot get file name for {}.", path.display());
-                        Report::new(RenameError::PathToOsStrFailed(msg.clone()))
-                            .attach_printable(msg.clone())
-                    })?;
-                    let file_name = file_name.to_str().ok_or_else(|| {
-                        let msg = format!("Cannot get file name for {}.", path.display());
-                        Report::new(RenameError::OsStrToStrFailed(msg.clone()))
-                            .attach_printable(msg.clone())
-                    })?;
-                    if file_name.contains(char::is_whitespace) {
-                        let mut new_file_path = path.clone();
-                        new_file_path.pop();
-                        let new_filename = file_name.replace(" ", "_");
-                        new_file_path.push(new_filename);
-                        let mut operation = "rename";
-                        if *dry_run {
-                            operation = "would rename";
-                        }
-                        println!(
-                            "File: matches {} {} from '{}' to '{}'",
-                            extension,
-                            operation,
-                            path.display(),
-                            new_file_path.display()
-                        );
-                        if !*dry_run {
-                            fs::rename(&path, &new_file_path).report().change_context(
-                                RenameError::RenameFailed(format!(
-                                    "Cannot rename file from {} to {}",
-                                    path.display(),
-                                    new_file_path.display()
-                                )),
-                            )?;
-                        }
-                    } else if *verbose {
-                        println!(
-                            "{} file: {} length {}",
-                            extension,
-                            path.display(),
-                            data.len()
-                        );
-                    }
-                } else if *verbose {
-                    println!("File: {} length {}", path.display(), data.len());
-                }
-            }
+            handle_file(&path, &data, &extension, &dry_run, &verbose)?;
         } else if data.is_dir() {
             if *verbose {
                 println!("Directory: {}", path.display());
