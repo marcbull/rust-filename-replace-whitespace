@@ -162,8 +162,7 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
-    let result = iterate_dir(&path, &extension, &dry_run, &verbose);
-    match result {
+    match iterate_dir(&path, &extension, &dry_run, &verbose) {
         Ok(()) => {
             println!("\nDone");
         }
