@@ -34,23 +34,21 @@ fn handle_file(
     if let Some(ex) = path.extension() {
         let ex = ex.to_str().ok_or_else(|| {
             let msg = format!("Cannot get extension for file {}", path.display());
-            Report::new(RenameError::OsStrToStrFailed(msg.clone())).attach_printable(msg.clone())
+            Report::new(RenameError::OsStrToStrFailed(msg.clone())).attach_printable(msg)
         })?;
         if ex == extension {
             let file_name = path.file_name().ok_or_else(|| {
                 let msg = format!("Cannot get file name for {}.", path.display());
-                Report::new(RenameError::PathToOsStrFailed(msg.clone()))
-                    .attach_printable(msg.clone())
+                Report::new(RenameError::PathToOsStrFailed(msg.clone())).attach_printable(msg)
             })?;
             let file_name = file_name.to_str().ok_or_else(|| {
                 let msg = format!("Cannot get file name for {}.", path.display());
-                Report::new(RenameError::OsStrToStrFailed(msg.clone()))
-                    .attach_printable(msg.clone())
+                Report::new(RenameError::OsStrToStrFailed(msg.clone())).attach_printable(msg)
             })?;
             if file_name.contains(char::is_whitespace) {
                 let mut new_file_path = path.clone();
                 new_file_path.pop();
-                let new_filename = file_name.replace(" ", "_");
+                let new_filename = file_name.replace(' ', "_");
                 new_file_path.push(new_filename);
                 let mut operation = "rename";
                 if *dry_run {
@@ -64,7 +62,7 @@ fn handle_file(
                     new_file_path.display()
                 );
                 if !*dry_run {
-                    fs::rename(&path, &new_file_path).report().change_context(
+                    fs::rename(path, &new_file_path).report().change_context(
                         RenameError::RenameFailed(format!(
                             "Cannot rename file from {} to {}",
                             path.display(),
@@ -115,14 +113,14 @@ fn iterate_dir(
                 path.display()
             )))?;
         if data.is_file() {
-            handle_file(&path, &data, &extension, &dry_run, &verbose)?;
+            handle_file(&path, &data, extension, dry_run, verbose)?;
         } else if data.is_dir() {
             if *verbose {
                 println!("Directory: {}", path.display());
             }
             let path = path.to_str().ok_or_else(|| {
                 let msg = format!("Cannot get string from {}.", path.display());
-                Report::new(RenameError::PathToStrFailed(msg.clone())).attach_printable(msg.clone())
+                Report::new(RenameError::PathToStrFailed(msg.clone())).attach_printable(msg)
             })?;
             iterate_dir(path, extension, dry_run, verbose)?;
         } else if data.is_symlink() {
@@ -131,8 +129,9 @@ fn iterate_dir(
             }
         } else {
             let msg = format!("Unkown metadaty type for for {}.", path.display());
-            return Err(Report::new(RenameError::UnknownMetadatyType(msg.clone()))
-                .attach_printable(msg.clone()));
+            return Err(
+                Report::new(RenameError::UnknownMetadatyType(msg.clone())).attach_printable(msg)
+            );
         }
     }
 
